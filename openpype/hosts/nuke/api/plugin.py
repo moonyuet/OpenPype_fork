@@ -35,7 +35,8 @@ from .lib import (
     get_node_data,
     get_view_process_node,
     get_viewer_config_from_string,
-    deprecated
+    deprecated,
+    get_frame
 )
 from .pipeline import (
     list_instances,
@@ -801,6 +802,10 @@ class ExporterReviewMov(ExporterReview):
         self.log.info("File info was set...")
 
         self.file = self.fhead + self.name + ".{}".format(self.ext)
+        if self.ext != "mov":
+            frame = get_frame()
+            self.file = self.fhead + self.name + ".{}.{}".format(
+                frame, self.ext)
         self.path = os.path.join(
             self.staging_dir, self.file).replace("\\", "/")
 

@@ -1167,6 +1167,25 @@ def format_anatomy(data):
     return anatomy.format(data)
 
 
+def get_frame():
+    '''Get the frame(s) formatted with the padding value from
+    the setting
+
+    Returns:
+        frame(str): the formatted frame
+    '''
+    anatomy = Anatomy()
+    log.debug("__ anatomy.templates: {}".format(anatomy.templates))
+
+    padding = None
+    if "frame_padding" in anatomy.templates.keys():
+        padding = int(anatomy.templates["frame_padding"])
+    elif "render" in anatomy.templates.keys():
+        padding = int(anatomy.templates["render"].get("frame_padding"))
+    frame = "#" * padding
+    return frame
+
+
 def script_name():
     ''' Returns nuke script path
     '''

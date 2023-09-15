@@ -447,7 +447,7 @@
         "ExtractReviewDataLut": {
             "enabled": false
         },
-        "ExtractReviewDataMov": {
+        "ExtractReviewDataBakingStreams": {
             "enabled": true,
             "viewer_lut_raw": false,
             "outputs": {

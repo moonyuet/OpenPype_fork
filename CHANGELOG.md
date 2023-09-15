@@ -1170,7 +1170,7 @@ Linux / Centos
 
 ### Current Behavior:
 
-the previous behavior (bug) : 
+the previous behavior (bug) :
 ![image](https://github.com/quadproduction/OpenPype/assets/135602303/09bff9d5-3f8b-4339-a1e5-30c04ade828c)
 
 
@@ -1185,11 +1185,11 @@ Happened only once in a particular configuration
 
 ### Which project / workfile / asset / ...
 
-open settings with 3.14.7 
+open settings with 3.14.7
 
 ### Steps To Reproduce:
 
-1. Run openpype on the 3.15.11-nightly.3 version 
+1. Run openpype on the 3.15.11-nightly.3 version
 2. Open settings in 3.14.7 version
 
 ### Relevant log output:
@@ -1689,9 +1689,9 @@ ___
 
 
 <details>
-<summary>Nuke - Allow ExtractReviewDataMov with no timecode knob <a href="https://github.com/ynput/OpenPype/pull/5305">#5305</a></summary>
+<summary>Nuke - Allow ExtractReviewDataBakingStreamsModel with no timecode knob <a href="https://github.com/ynput/OpenPype/pull/5305">#5305</a></summary>
 
-ExtractReviewDataMov allows to specify file type. Trying to write some other extension than mov fails on generate_mov assuming that mov64_write_timecode knob exists.
+ExtractReviewDataBakingStreamsModel allows to specify file type. Trying to write some other extension than mov fails on generate_mov assuming that mov64_write_timecode knob exists.
 
 
 ___

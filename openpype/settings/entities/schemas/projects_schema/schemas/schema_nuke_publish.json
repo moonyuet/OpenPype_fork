@@ -234,8 +234,8 @@
             "type": "dict",
             "collapsible": true,
             "checkbox_key": "enabled",
-            "key": "ExtractReviewDataMov",
-            "label": "ExtractReviewDataMov",
+            "key": "ExtractReviewDataBakingStreams",
+            "label": "ExtractReviewDataBakingStreams",
             "is_group": true,
             "children": [
                 {
