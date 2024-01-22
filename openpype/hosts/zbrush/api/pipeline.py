@@ -47,7 +47,7 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     def _install_menu(self):
         cmds = []
-        for file in ["prism_menu.txt", "prism_menu.zsc"]:
+        for file in ["ayon_zbrush_menu.txt", "ayon_zbrush_menu.zsc"]:
             zbrush_path = os.environ["ZBRUSH_PLUGIN_PATH"]
             origFile = os.path.join(ZBRUSH_HOST_DIR, file)
             targetFile = os.path.join(zbrush_path[-1], file)
@@ -61,6 +61,9 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
                                           "python.exe").replace("\\", "/")
                 initStr = initStr.replace("PYTHONEXE",python_exe)
                 initStr = initStr.replace("AYONZBRUSHHOST", "%s" % ZBRUSH_HOST_DIR)
+            with open(targetFile, "w") as target:
+                target.write(initStr)
+                target.close()
 
     def save_file(self, dst_path=None):
         return super().save_file(dst_path)
