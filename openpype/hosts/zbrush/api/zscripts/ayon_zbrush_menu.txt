@@ -1,19 +1,19 @@
 [ISubPalette,"Zplugin:AYON"]
 [IButton,"Zplugin:AYON:Create","Create Tab for Publisher",
 /*commands here*/
-,,1]//end button
+]//end button
 [IButton,"Zplugin:AYON:Load","Loader",
 /*commands here*/
-,,1]//end button
+]//end button
 [IButton,"Zplugin:AYON:Publish","Publish Tab for Publisher",
 /*commands here*/
-,,1]//end button
+]//end button
 [IButton,"Zplugin:AYON:Library","Library",
 /*commands here*/
-,,1]//end button
+]//end button
 [IButton,"Zplugin:AYON:Workfile","Workfile",
 	[VarSet,fullFilePath,"ZBRUSHHOST/api/scripts/pipeline.py"]
 	[VarSet, cmd, [StrMerge, start, " ", [StrFromAsc, 34], [StrFromAsc, 34], "  ", [StrFromAsc, 34], "PYTHONEXE", [StrFromAsc, 34], " ", [StrFromAsc, 34], fullFilePath, [StrFromAsc, 34]]]
 	[VarSet, cmd, [StrMerge, cmd, " Workfile ", [StrFromAsc, 34], "AYONROOT", [StrFromAsc, 34]]]
 	[ShellExecute, cmd], 0, 120
-,,1]//end button
+]//end button
