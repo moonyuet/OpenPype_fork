@@ -65,7 +65,40 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
                 target.write(initStr)
                 target.close()
 
+    def has_unsaved_changes(self):
+        # TODO: how to get it from 3dsmax?
+        return True
+
+    def get_workfile_extensions(self):
+        return [".zpr"]
+
+    def save_workfile(self, dst_path=None):
+        return dst_path
+
+    def open_workfile(self, filepath):
+        return filepath
+
+    def get_current_workfile(self):
+        return None
+
     def save_file(self, dst_path=None):
         return super().save_file(dst_path)
-    def open_file(self, filepath):
-        return super().open_file(filepath)
+
+
+def ls() -> list:
+    """Get all OpenPype instances."""
+    return []
+
+
+def containerise(name: str, nodes: list, context,
+                 namespace=None, loader=None, suffix="_CON"):
+    data = {
+        "schema": "openpype:container-2.0",
+        "id": AVALON_CONTAINER_ID,
+        "name": name,
+        "namespace": namespace or "",
+        "loader": loader,
+        "representation": context["representation"]["_id"],
+    }
+
+    return data
