@@ -1,15 +1,21 @@
 [ISubPalette,"Zplugin:AYON"]
-[IButton,"Zplugin:AYON:Create","Create Tab for Publisher",
-/*commands here*/
-]//end button
 [IButton,"Zplugin:AYON:Load","Loader",
-/*commands here*/
+	[VarSet,fullFilePath,"ZBRUSHHOST/api/scripts/pipeline.py"]
+	[VarSet, cmd, [StrMerge, start, " ", [StrFromAsc, 34], [StrFromAsc, 34], "  ", [StrFromAsc, 34], "PYTHONEXE", [StrFromAsc, 34], " ", [StrFromAsc, 34], fullFilePath, [StrFromAsc, 34]]]
+	[VarSet, cmd, [StrMerge, cmd, " Loader ", [StrFromAsc, 34], "AYONROOT", [StrFromAsc, 34]]]
+	[ShellExecute, cmd], 0, 120
 ]//end button
 [IButton,"Zplugin:AYON:Publish","Publish Tab for Publisher",
-/*commands here*/
+	[VarSet,fullFilePath,"ZBRUSHHOST/api/scripts/pipeline.py"]
+	[VarSet, cmd, [StrMerge, start, " ", [StrFromAsc, 34], [StrFromAsc, 34], "  ", [StrFromAsc, 34], "PYTHONEXE", [StrFromAsc, 34], " ", [StrFromAsc, 34], fullFilePath, [StrFromAsc, 34]]]
+	[VarSet, cmd, [StrMerge, cmd, " Publisher ", [StrFromAsc, 34], "AYONROOT", [StrFromAsc, 34]]]
+	[ShellExecute, cmd], 0, 120
 ]//end button
 [IButton,"Zplugin:AYON:Library","Library",
-/*commands here*/
+	[VarSet,fullFilePath,"ZBRUSHHOST/api/scripts/pipeline.py"]
+	[VarSet, cmd, [StrMerge, start, " ", [StrFromAsc, 34], [StrFromAsc, 34], "  ", [StrFromAsc, 34], "PYTHONEXE", [StrFromAsc, 34], " ", [StrFromAsc, 34], fullFilePath, [StrFromAsc, 34]]]
+	[VarSet, cmd, [StrMerge, cmd, " Library ", [StrFromAsc, 34], "AYONROOT", [StrFromAsc, 34]]]
+	[ShellExecute, cmd], 0, 120
 ]//end button
 [IButton,"Zplugin:AYON:Workfile","Workfile",
 	[VarSet,fullFilePath,"ZBRUSHHOST/api/scripts/pipeline.py"]
