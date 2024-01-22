@@ -16,4 +16,4 @@
 	[VarSet, cmd, [StrMerge, start, " ", [StrFromAsc, 34], [StrFromAsc, 34], "  ", [StrFromAsc, 34], "PYTHONEXE", [StrFromAsc, 34], " ", [StrFromAsc, 34], fullFilePath, [StrFromAsc, 34]]]
 	[VarSet, cmd, [StrMerge, cmd, " Workfile ", [StrFromAsc, 34], "AYONROOT", [StrFromAsc, 34]]]
 	[ShellExecute, cmd], 0, 120
-]//end button
+,,1]//end button
