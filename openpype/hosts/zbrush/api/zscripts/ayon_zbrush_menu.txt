@@ -1,4 +1,31 @@
+[VarDef,dllPath,""]//path to dll
+[VarDef,err,0]//standard error
+[VarDef,ver,0]//version
+[VarDef,stringArg,""]
+[VarDef,responseString,""]
+
+[RoutineDef,CheckSystem,
+	[VarSet,dllPath,"ZSOCKET.dll"]
+	[If,[FileExists,dllPath],
+		,
+		[Note,"DLL is missing"][Exit]
+	]
+]
 [ISubPalette,"Zplugin:AYON"]
+[IButton, "Zplugin:AYON:GetSocketAddress","GetSocketAddress",
+	[RoutineCall,CheckSystem]
+	[MemCreate, addr, 256, 0]
+	[VarSet, err, [FileExecute,[Var,dllPath],"GetSocketAddr",,,,addr]]
+	[If, err,
+		[Note, [StrMerge, "Mem Block too Small  ", err]]
+		[Exit]
+	,
+		[VarSet, addrStr, ""]
+		[MemReadString, addr, addrStr]
+		[Note, addrStr]
+		[MemDelete, addr]
+	]
+]
 [IButton,"Zplugin:AYON:Load","Loader",
 	[VarSet,fullFilePath,"ZBRUSHHOST/api/scripts/pipeline.py"]
 	[VarSet, cmd, [StrMerge, start, " ", [StrFromAsc, 34], [StrFromAsc, 34], "  ", [StrFromAsc, 34], "PYTHONEXE", [StrFromAsc, 34], " ", [StrFromAsc, 34], fullFilePath, [StrFromAsc, 34]]]
