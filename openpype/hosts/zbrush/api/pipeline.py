@@ -5,14 +5,16 @@ from operator import attrgetter
 
 import json
 
-
+SECTION_NAME_CONTEXT = "context"
 from openpype.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
 import pyblish.api
 from openpype.pipeline import (
+    legacy_io,
     register_creator_plugin_path,
     register_loader_plugin_path,
     AVALON_CONTAINER_ID,
 )
+from openpype.lib import register_event_callback
 from openpype.hosts.zbrush import ZBRUSH_HOST_DIR
 
 
@@ -26,48 +28,65 @@ log = logging.getLogger("openpype.hosts.zbrush")
 
 class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     name = "zbrush"
-    menu = None
-
-    def __init__(self):
-        super(ZbrushHost, self).__init__()
-        self._op_events = {}
-        self._has_been_setup = False
 
     def install(self):
+        legacy_io.install()
+
+        # Create workdir folder if does not exist yet
+        workdir = legacy_io.Session["AVALON_WORKDIR"]
+        if not os.path.exists(workdir):
+            os.makedirs(workdir)
+
+        plugins_dir = os.path.join(ZBRUSH_HOST_DIR, "plugins")
+        publish_dir = os.path.join(plugins_dir, "publish")
+        load_dir = os.path.join(plugins_dir, "load")
+        create_dir = os.path.join(plugins_dir, "create")
+
         pyblish.api.register_host("zbrush")
+        pyblish.api.register_plugin_path(publish_dir)
+        register_loader_plugin_path(load_dir)
+        register_creator_plugin_path(create_dir)
 
-        pyblish.api.register_plugin_path(PUBLISH_PATH)
-        register_loader_plugin_path(LOAD_PATH)
-        register_creator_plugin_path(CREATE_PATH)
-        log.info("Installing menu ... ")
-        self._install_menu()
+    def get_current_project_name(self):
+        """
+        Returns:
+            Union[str, None]: Current project name.
+        """
 
+        return self.get_current_context().get("project_name")
 
-        self._has_been_setup = True
+    def get_current_asset_name(self):
+        """
+        Returns:
+            Union[str, None]: Current asset name.
+        """
 
-    def _install_menu(self):
-        cmds = []
-        for file in ["ayon_zbrush_menu.txt", "ayon_zbrush_menu.zsc"]:
-            zbrush_path = os.environ["ZBRUSH_PLUGIN_PATH"]
-            origFile = os.path.join(ZBRUSH_HOST_DIR, file)
-            targetFile = os.path.join(zbrush_path[-1], file)
-            _, ext = os.path.splitext(file)
-            if ext == ".txt":
-                with open(origFile, "r") as init:
-                    initStr = init.read()
-                env = os.environ["AYON_ROOT"] or os.environ["OPENPYPE_ROOT"]
-                initStr = initStr.replace("AYONROOT", "%s" % env)
-                python_exe = os.path.join(os.environ["PYTHONPATH"][0],
-                                          "python.exe").replace("\\", "/")
-                initStr = initStr.replace("PYTHONEXE",python_exe)
-                initStr = initStr.replace("AYONZBRUSHHOST", "%s" % ZBRUSH_HOST_DIR)
-            with open(targetFile, "w") as target:
-                target.write(initStr)
-                target.close()
+        return self.get_current_context().get("asset_name")
 
-    def has_unsaved_changes(self):
-        # TODO: how to get it from 3dsmax?
+    def get_current_task_name(self):
+        """
+        Returns:
+            Union[str, None]: Current task name.
+        """
+
+        return self.get_current_context().get("task_name")
+
+    # --- Workfile ---
+    def open_workfile(self, filepath):
+
         return True
+
+    def save_workfile(self, filepath=None):
+        return True
+
+    def work_root(self, session):
+        return session["AVALON_WORKDIR"]
+
+    def get_current_workfile(self):
+        return True
+
+    def workfile_has_unsaved_changes(self):
+        return None
 
     def get_workfile_extensions(self):
         return [".zpr"]
@@ -79,10 +98,13 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         return filepath
 
     def get_current_workfile(self):
-        return None
+        return ""
 
     def save_file(self, dst_path=None):
         return super().save_file(dst_path)
+
+    def list_instances(self):
+        return ls()
 
 
 def ls() -> list:

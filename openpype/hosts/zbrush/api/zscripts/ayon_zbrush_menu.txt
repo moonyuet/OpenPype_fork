@@ -12,36 +12,24 @@
 	]
 ]
 [ISubPalette,"Zplugin:AYON"]
-[IButton, "Zplugin:AYON:GetSocketAddress","GetSocketAddress",
-	[RoutineCall,CheckSystem]
-	[MemCreate, addr, 256, 0]
-	[VarSet, err, [FileExecute,[Var,dllPath],"GetSocketAddr",,,,addr]]
-	[If, err,
-		[Note, [StrMerge, "Mem Block too Small  ", err]]
-		[Exit]
-	,
-		[VarSet, addrStr, ""]
-		[MemReadString, addr, addrStr]
-		[Note, addrStr]
-		[MemDelete, addr]
-	]
-]
+[IButton,"Zplugin:AYON:Create","Creator",
+	[VarSet,fullFilePath,"D:/OpenPype_fork/openpype/hosts/zbrush/api/launch_ui.py"]
+	[VarSet, creator, "Creator"]
+	[VarSet, cmd, [StrMerge, start, " ", [StrFromAsc, 34], [StrFromAsc, 34], "  ", [StrFromAsc, 34], "D:\OpenPype_fork\.venv\Scripts\python.exe", [StrFromAsc, 34], " ", [StrFromAsc, 34], fullFilePath, [StrFromAsc, 34]]]
+	[VarSet, cmd, [StrMerge, cmd, " ", creator, [StrFromAsc, 34]]]
+	[ShellExecute, cmd], 0, 120
+]//end button
 [IButton,"Zplugin:AYON:Load","Loader",
-	[VarSet,fullFilePath,"ZBRUSHHOST/api/scripts/pipeline.py"]
-	[VarSet, cmd, [StrMerge, start, " ", [StrFromAsc, 34], [StrFromAsc, 34], "  ", [StrFromAsc, 34], "PYTHONEXE", [StrFromAsc, 34], " ", [StrFromAsc, 34], fullFilePath, [StrFromAsc, 34]]]
-	[VarSet, cmd, [StrMerge, cmd, " Loader ", [StrFromAsc, 34], "AYONROOT", [StrFromAsc, 34]]]
+	[VarSet,fullFilePath,"D:/OpenPype_fork/openpype/hosts/zbrush/api/launch_ui.py"]
+	[VarSet, loader, "Loader"]
+	[VarSet, cmd, [StrMerge, start, " ", [StrFromAsc, 34], [StrFromAsc, 34], "  ", [StrFromAsc, 34], "D:\OpenPype_fork\.venv\Scripts\python.exe", [StrFromAsc, 34], " ", [StrFromAsc, 34], fullFilePath, [StrFromAsc, 34]]]
+	[VarSet, cmd, [StrMerge, cmd, " ", #loader, [StrFromAsc, 34]]]
 	[ShellExecute, cmd], 0, 120
 ]//end button
 [IButton,"Zplugin:AYON:Publish","Publish Tab for Publisher",
-	[VarSet,fullFilePath,"ZBRUSHHOST/api/scripts/pipeline.py"]
+	[VarSet,fullFilePath,"D:/OpenPype_fork/openpype/hosts/zbrush/api/launch_ui.py"]
 	[VarSet, cmd, [StrMerge, start, " ", [StrFromAsc, 34], [StrFromAsc, 34], "  ", [StrFromAsc, 34], "PYTHONEXE", [StrFromAsc, 34], " ", [StrFromAsc, 34], fullFilePath, [StrFromAsc, 34]]]
-	[VarSet, cmd, [StrMerge, cmd, " Publisher ", [StrFromAsc, 34], "AYONROOT", [StrFromAsc, 34]]]
-	[ShellExecute, cmd], 0, 120
-]//end button
-[IButton,"Zplugin:AYON:Library","Library",
-	[VarSet,fullFilePath,"ZBRUSHHOST/api/scripts/pipeline.py"]
-	[VarSet, cmd, [StrMerge, start, " ", [StrFromAsc, 34], [StrFromAsc, 34], "  ", [StrFromAsc, 34], "PYTHONEXE", [StrFromAsc, 34], " ", [StrFromAsc, 34], fullFilePath, [StrFromAsc, 34]]]
-	[VarSet, cmd, [StrMerge, cmd, " Library ", [StrFromAsc, 34], "AYONROOT", [StrFromAsc, 34]]]
+	[VarSet, cmd, [StrMerge, cmd, "Publisher", [StrFromAsc, 34], "AYONROOT", [StrFromAsc, 34]]]
 	[ShellExecute, cmd], 0, 120
 ]//end button
 [IButton,"Zplugin:AYON:Workfile","Workfile",

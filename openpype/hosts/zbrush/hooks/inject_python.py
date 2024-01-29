@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """Pre-launch hook to inject python environment."""
 import os
-from pathlib import Path
-from openpype.hosts.zbrush import ZBRUSH_HOST_DIR
 from openpype.lib.applications import PreLaunchHook, LaunchTypes
 
 

@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """Public API for Zbrush"""
-
 from .pipeline import (
-    ZbrushHost
+    ZbrushHost,
 )
 
 __all__ = [

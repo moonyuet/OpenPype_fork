@@ -5,6 +5,14 @@ from openpype.modules import OpenPypeModule, IHostAddon
 ZBRUSH_HOST_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
+def get_launch_script_path():
+    return os.path.join(
+        ZBRUSH_HOST_DIR,
+        "api",
+        "launch_script.py"
+    )
+
+
 class ZbrushAddon(OpenPypeModule, IHostAddon):
     name = "zbrush"
     host_name = "zbrush"
@@ -28,6 +36,14 @@ class ZbrushAddon(OpenPypeModule, IHostAddon):
                 new_zbrush_paths.append(norm_path)
 
         env["ZBRUSH_PLUGIN_PATH"] = os.pathsep.join(new_zbrush_paths)
+        defaults = {
+            "OPENPYPE_LOG_NO_COLORS": "True",
+            "WEBSOCKET_URL": "ws://localhost:6001"
+        }
+        for key, value in defaults.items():
+            if not env.get(key):
+                env[key] = value
+
         env.pop("QT_AUTO_SCREEN_SCALE_FACTOR", None)
 
     def get_workfile_extensions(self):
