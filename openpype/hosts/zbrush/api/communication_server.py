@@ -353,7 +353,7 @@ class QtZbrushRpc(BaseZbrushRpc):
         return
 
     async def experimental_tools(self):
-        log.info("Triggering Library loader tool")
+        log.info("Triggering experimental tool")
         item = MainThreadItem(self.tools_helper.show_experimental_tools_dialog)
         self._execute_in_main_thread(item, wait=False)
         return
@@ -715,11 +715,6 @@ class QtCommunicator(BaseCommunicator):
         if self.callback_queue:
             return self.callback_queue.popleft()
         return None
-
-    def _build_menu(self):
-        self.send_request(
-            "loader", self.loader_tool
-        )
 
     def _exit(self, *args, **kwargs):
         super()._exit(*args, **kwargs)
