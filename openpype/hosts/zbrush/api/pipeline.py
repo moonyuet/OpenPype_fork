@@ -1,23 +1,27 @@
 """Pipeline tools for OpenPype Zbrush integration."""
 import os
 import logging
-from operator import attrgetter
+import requests
 
-import json
-
-SECTION_NAME_CONTEXT = "context"
-from openpype.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
 import pyblish.api
+
+from openpype.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
 from openpype.pipeline import (
     legacy_io,
     register_creator_plugin_path,
     register_loader_plugin_path,
     AVALON_CONTAINER_ID,
 )
+from openpype.pipeline.context_tools import get_global_context
+from openpype.settings import get_current_project_settings
 from openpype.lib import register_event_callback
 from openpype.hosts.zbrush import ZBRUSH_HOST_DIR
+from .workio import (
+    save_file, open_file,
+    get_current_filepath
+)
 
-
+SECTION_NAME_CONTEXT = "context"
 PLUGINS_DIR = os.path.join(ZBRUSH_HOST_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
@@ -47,6 +51,9 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         register_loader_plugin_path(load_dir)
         register_creator_plugin_path(create_dir)
 
+        register_event_callback("application.exit", self.application_exit)
+
+
     def get_current_project_name(self):
         """
         Returns:
@@ -71,46 +78,79 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         return self.get_current_context().get("task_name")
 
+    def get_current_context(self):
+        context = get_current_workfile_context()
+        if not context:
+            return get_global_context()
+
+        if "project_name" in context:
+            return context
+        # This is legacy way how context was stored
+        return {
+            "project_name": context.get("project"),
+            "asset_name": context.get("asset"),
+            "task_name": context.get("task")
+        }
     # --- Workfile ---
     def open_workfile(self, filepath):
-
-        return True
+        open_file(filepath)
+        return filepath
 
     def save_workfile(self, filepath=None):
-        return True
+        if not filepath:
+            filepath = self.get_current_workfile()
+        save_file(filepath)
+        return filepath
 
     def work_root(self, session):
         return session["AVALON_WORKDIR"]
 
     def get_current_workfile(self):
-        return True
+        return get_current_filepath()
 
     def workfile_has_unsaved_changes(self):
+        # from time import gmtime, strftime
+        # current_time = strftime("%Y-%m-%d %H:%M:%S", gmtime())
+        # print(current_time)
+
         return None
 
     def get_workfile_extensions(self):
         return [".zpr"]
 
-    def save_workfile(self, dst_path=None):
-        return dst_path
-
-    def open_workfile(self, filepath):
-        return filepath
-
-    def get_current_workfile(self):
-        return ""
-
-    def save_file(self, dst_path=None):
-        return super().save_file(dst_path)
-
     def list_instances(self):
         return ls()
+
+
+    def application_exit(self):
+        """Logic related to TimerManager.
+
+        Todo:
+            This should be handled out of TVPaint integration logic.
+        """
+
+        data = get_current_project_settings()
+        stop_timer = data["tvpaint"]["stop_timer_on_application_exit"]
+
+        if not stop_timer:
+            return
+
+        # Stop application timer.
+        webserver_url = os.environ.get("OPENPYPE_WEBSERVER_URL")
+        rest_api_url = "{}/timers_manager/stop_timer".format(webserver_url)
+        requests.post(rest_api_url)
 
 
 def ls() -> list:
     """Get all OpenPype instances."""
     return []
 
+
+def get_current_workfile_context():
+    pass
+
+def get_workfile_metadata(metadata_key, default=None):
+    pass
 
 def containerise(name: str, nodes: list, context,
                  namespace=None, loader=None, suffix="_CON"):

@@ -9,7 +9,6 @@ import socket
 import tempfile
 import threading
 import shutil
-
 from contextlib import closing
 
 from aiohttp import web
@@ -19,11 +18,27 @@ from aiohttp_json_rpc.protocol import (
 )
 from aiohttp_json_rpc.exceptions import RpcError
 
-from openpype.lib import emit_event
+from openpype.lib import emit_event, run_subprocess
 from openpype.hosts.zbrush import ZBRUSH_HOST_DIR
+
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
+
+
+
+def get_zbrush_path():
+    zbrush_exe_path = None
+    processName = 'zbrush.exe'
+    for proc in psutil.process_iter():
+        try:
+            # Check if process name contains the given name string.
+            if processName in proc.name().lower():
+                zbrush_exe_path = proc.exe()
+                return zbrush_exe_path
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            log.warning("No Zbrush running in the task.")
+    return zbrush_exe_path
 
 
 class CommunicationWrapper:
@@ -57,7 +72,7 @@ class CommunicationWrapper:
         """Execute passed goerge script in Zbrush."""
         if not cls.communicator:
             return
-        return cls.communicator.execute_george(zscript)
+        return cls.communicator.execute_zscript(zscript)
 
 
 class WebSocketServer:
@@ -367,7 +382,6 @@ class QtZbrushRpc(BaseZbrushRpc):
         return self.communication_obj.execute_in_main_thread(item, **kwargs)
 
 
-
 class MainThreadItem:
     """Structure to store information about callback in main thread.
 
@@ -669,6 +683,25 @@ class BaseCommunicator:
 
         self.websocket_rpc.send_notification(
             client, method, params
+        )
+
+    def execute_zscript(self, zscript):
+        """Execute passed zscript in Zbrush."""
+        def run_subprocess_zscript(zscript):
+            zbrush_exe = os.environ["ZBRUSH_EXE"]
+            output_file = tempfile.NamedTemporaryFile(
+                mode="w", prefix="a_tvp_", suffix=".txt", delete=False
+            )
+            output_file.close()
+            output_filepath = output_file.name.replace("\\", "/")
+            log.debug(output_filepath)
+            with open(output_filepath, "wt") as tmp:
+                tmp.write(zscript)
+            zbrush_exe = zbrush_exe.replace("\\", "/")
+            subprocess.call([zbrush_exe, output_filepath])
+
+        return self.send_request(
+            "execute_zscript", run_subprocess_zscript(zscript)
         )
 
 class QtCommunicator(BaseCommunicator):
