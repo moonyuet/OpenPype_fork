@@ -35,7 +35,7 @@ class ForceStartupScript(PreLaunchHook):
 
         if remainders:
             self.log.warning((
-                "There are unexpected launch arguments in TVPaint launch. {}"
+                "There are unexpected launch arguments in Zbrush launch. {}"
             ).format(str(remainders)))
             self.launch_context.launch_args.extend(remainders)
 

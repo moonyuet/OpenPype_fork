@@ -1,5 +1,7 @@
 #zscript command etc.
+import os
 import logging
+import tempfile
 from . import CommunicationWrapper
 
 
