@@ -13,7 +13,12 @@ from openpype.pipeline import (
     register_loader_plugin_path,
     AVALON_CONTAINER_ID,
 )
-from openpype.pipeline.context_tools import get_global_context
+from openpype.pipeline.context_tools import (
+    get_global_context,
+    get_current_task_name,
+    get_current_asset_name,
+    get_current_project_name
+)
 from openpype.settings import get_current_project_settings
 from openpype.lib import register_event_callback
 from openpype.hosts.zbrush import ZBRUSH_HOST_DIR
@@ -83,10 +88,9 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         return self.get_current_context().get("task_name")
 
     def get_current_context(self):
-        context = get_current_workfile_context()
+        context = get_global_context()
         if not context:
             return get_global_context()
-
         if "project_name" in context:
             return context
         # This is legacy way how context was stored
@@ -99,7 +103,7 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     def open_workfile(self, filepath):
         open_file_zscript = ("""
 [IFreeze,
-[MemCreate, currentfile, 100, 0]
+[MemCreate, currentfile, 1000, 0]
 [VarSet, filename, "{filepath}"]
 [MemWriteString, currentfile, #filename, 0]
 [FileNameSetNext, #filename]
@@ -109,16 +113,18 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         execute_zscript(open_file_zscript)
         return filepath
 
-    def save_workfile(self, filepath=None):
+    def save_workfile(self, filepath):
         if not filepath:
             filepath = self.get_current_workfile()
+        filepath = filepath.replace("\\", "/")
         save_file_zscript = ("""
 [IFreeze,
-[MemCreate, currentfile, 100, 0]
+[If, [MemCreate, currentfile, 1000, 0] !=-1,
+[MemCreate, currentfile]]
 [VarSet, filename, "{filepath}"]
 [MemWriteString, currentfile, #filename, 0]
 [FileNameSetNext, #filename]
-[IKeyPress, 13, [IPress, File:Save:Save]]
+[IKeyPress, 13, [IPress, File:SaveAs:SaveAs]]
 ]
 """).format(filepath=filepath)
         context = get_global_context()
@@ -138,15 +144,16 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         output_filepath = output_file.name.replace("\\", "/")
         find_current_filepath_zscript = ("""
 [IFreeze,
+[MemCreate, currentfile, 1000, 0]
 [MemSaveToFile, currentfile, "{output_filepath}", 1]
-[MemDelete, currentfile]
 ]
         """).format(output_filepath=output_filepath)
+        print(f"current_filepath: {output_filepath}")
         execute_zscript(find_current_filepath_zscript)
         if not os.path.exists(output_filepath):
             return None
         with open(output_filepath, "r") as current_file:
-            return str(current_file.read())
+            return str(current_file.read()).rstrip('\x00')
 
     def workfile_has_unsaved_changes(self):
         # Pop-up dialog would be located to ask if users
@@ -211,18 +218,22 @@ def containerise(
 
 
 def write_workfile_metadata(metadata_key, value):
-    data_dict = {metadata_key: value}
     context_data_zscript = ("""
 [IFreeze,
-[MemCreate, {metadata_key}, 4000, 0]
-[MemWriteString, {metadata_key}, {data}, 0]
+[MemCreate, {metadata_key}, 400000, 0]
+[MemWriteString, {metadata_key}, "{data}", 0]
 ]
-""").format(metadata_key=metadata_key, data=data_dict)
-    execute_zscript(context_data_zscript)
+""").format(metadata_key=metadata_key, data=value)
+    return execute_zscript(context_data_zscript)
 
 
 def get_current_workfile_context():
-    return get_workfile_metadata(ZBRUSH_SECTION_NAME_CONTEXT, {})
+    current_context = {
+        "project_name": os.environ.get("AVALON_PROJECT"),
+        "asset_name": os.environ.get("AVALON_ASSET"),
+        "task_name": os.environ.get("AVALON_TASK"),
+    }
+    return get_workfile_metadata(ZBRUSH_SECTION_NAME_CONTEXT, current_context)
 
 
 def save_current_workfile_context(context):
@@ -232,24 +243,22 @@ def save_current_workfile_context(context):
 def get_workfile_metadata(metadata_key, default=None):
     if default is None:
         default = "[]"
-    data_dict = {metadata_key: default}
     output_file = tempfile.NamedTemporaryFile(
-        mode="w", prefix="a_zb_", suffix=".txt", delete=False
+        mode="w", prefix="a_zb_meta", suffix=".txt", delete=False
     )
     output_file.close()
     output_filepath = output_file.name.replace("\\", "/")
     context_data_zscript = ("""
 [IFreeze,
-[If, [MemCreate, {metadata_key}, 4000, 0] !=-1,
-[MemCreate, {metadata_key}, 4000, 0]
-[MemWriteString, {metadata_key}, {data}, 0]]
+[If, [MemCreate, {metadata_key}, 400000, 0] !=-1,
+[MemCreate, {metadata_key}, 400000, 0]
+[MemWriteString, {metadata_key}, "{default}", 0]]
 [MemSaveToFile, {metadata_key}, "{output_filepath}", 1]
 [MemDelete, {metadata_key}]
 ]
 """).format(metadata_key=metadata_key,
-            data=data_dict, output_filepath=output_filepath)
+            default=default, output_filepath=output_filepath)
     execute_zscript(context_data_zscript)
-    print(output_filepath)
     with open(output_filepath) as data:
         file_content = str(data.read().strip()).rstrip('\x00')
         file_content = ast.literal_eval(file_content)

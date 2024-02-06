@@ -1,11 +1,4 @@
 from openpype.pipeline import CreatedInstance, Creator, get_subset_name
-from openpype.lib import BoolDef
-from openpype.hosts.substancepainter.api.pipeline import (
-    get_instances,
-    set_instance,
-    set_instances,
-    remove_instance
-)
 from openpype.pipeline.create.creator_plugins import cache_and_get_instances
 
 SHARED_DATA_KEY = "openpype.zbrush.instances"
