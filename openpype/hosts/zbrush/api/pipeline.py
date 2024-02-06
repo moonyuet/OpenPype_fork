@@ -214,10 +214,10 @@ def write_workfile_metadata(metadata_key, value):
     data_dict = {metadata_key: value}
     context_data_zscript = ("""
 [IFreeze,
-[MemCreate, ayonData, 4000, 0]
-[MemWriteString, ayonData, {data}, 0]
+[MemCreate, {metadata_key}, 4000, 0]
+[MemWriteString, {metadata_key}, {data}, 0]
 ]
-""").format(data=data_dict)
+""").format(metadata_key=metadata_key, data=data_dict)
     execute_zscript(context_data_zscript)
 
 
@@ -240,14 +240,16 @@ def get_workfile_metadata(metadata_key, default=None):
     output_filepath = output_file.name.replace("\\", "/")
     context_data_zscript = ("""
 [IFreeze,
-[If, [MemCreate, ayonData, 4000, 0] !=-1,
-[MemCreate, ayonData, 4000, 0]
-[MemWriteString, ayonData, {data}, 0]]
-[MemSaveToFile, ayonData, "{output_filepath}", 1]
-[MemDelete, ayonData]
+[If, [MemCreate, {metadata_key}, 4000, 0] !=-1,
+[MemCreate, {metadata_key}, 4000, 0]
+[MemWriteString, {metadata_key}, {data}, 0]]
+[MemSaveToFile, {metadata_key}, "{output_filepath}", 1]
+[MemDelete, {metadata_key}]
 ]
-""").format(data=data_dict, output_filepath=output_filepath)
+""").format(metadata_key=metadata_key,
+            data=data_dict, output_filepath=output_filepath)
     execute_zscript(context_data_zscript)
+    print(output_filepath)
     with open(output_filepath) as data:
         file_content = str(data.read().strip()).rstrip('\x00')
         file_content = ast.literal_eval(file_content)
