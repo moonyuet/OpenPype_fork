@@ -27,7 +27,7 @@
 [IButton,"Zplugin:AYON:Workfile","Workfile",
 	[VarSet,sc, "D:/OpenPype_fork/openpype/hosts/zbrush/api/widgets.py"]
 	[VarSet, workfiles, "workfiles_tool"]
-	    [VarSet, q, [StrFromAsc, 34]]
+	[VarSet, q, [StrFromAsc, 34]]
 	[VarSet, cmd, [StrMerge, start, " ",#q, #q, "  ",#q, "D:\OpenPype_fork\.venv\Scripts\python.exe",#q, " ",#q, sc, #q]]
 	[VarSet, cmd, [StrMerge, cmd, " ", #workfiles, #q]]
 	[ShellExecute, cmd], 0, 120

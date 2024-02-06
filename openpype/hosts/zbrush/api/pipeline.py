@@ -1,6 +1,6 @@
 """Pipeline tools for OpenPype Zbrush integration."""
 import os
-import json
+import ast
 import logging
 import requests
 import tempfile
@@ -19,7 +19,12 @@ from openpype.lib import register_event_callback
 from openpype.hosts.zbrush import ZBRUSH_HOST_DIR
 from .lib import execute_zscript
 
-AYON_METADATA_CONTEXT_KEY = "AYON"
+METADATA_SECTION = "avalon"
+ZBRUSH_SECTION_NAME_CONTEXT = "context"
+ZBRUSH_METADATA_CREATE_CONTEXT = "create_context"
+ZBRUSH_SECTION_NAME_INSTANCES = "instances"
+ZBRUSH_SECTION_NAME_CONTAINERS = "containers"
+
 PLUGINS_DIR = os.path.join(ZBRUSH_HOST_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
@@ -78,7 +83,7 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         return self.get_current_context().get("task_name")
 
     def get_current_context(self):
-        context = self.get_context_data()
+        context = get_current_workfile_context()
         if not context:
             return get_global_context()
 
@@ -116,6 +121,9 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 [IKeyPress, 13, [IPress, File:Save:Save]]
 ]
 """).format(filepath=filepath)
+        context = get_global_context()
+        save_current_workfile_context(context)
+
         execute_zscript(save_file_zscript)
         return filepath
 
@@ -150,10 +158,13 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     def list_instances(self):
         """Get all OpenPype instances."""
-        return []
+        return get_workfile_metadata(ZBRUSH_SECTION_NAME_INSTANCES)
 
     def write_instances(self, data):
-        pass
+        return write_workfile_metadata(ZBRUSH_SECTION_NAME_INSTANCES, data)
+
+    def get_containers(self):
+        return get_containers()
 
     def application_exit(self):
         """Logic related to TimerManager.
@@ -174,24 +185,60 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         requests.post(rest_api_url)
 
     def update_context_data(self, data, changes):
-        value = data if data else {}
-        data_dict = {AYON_METADATA_CONTEXT_KEY: value}
-        context_data_zscript = ("""
+        return write_workfile_metadata(ZBRUSH_METADATA_CREATE_CONTEXT, data)
+
+    def get_context_data(self):
+        get_workfile_metadata(ZBRUSH_METADATA_CREATE_CONTEXT, {})
+
+def containerise(
+        name, namespace, context, loader, containers=None):
+    data = {
+        "schema": "openpype:container-2.0",
+        "id": AVALON_CONTAINER_ID,
+        "name": name,
+        "namespace": namespace or "",
+        "loader": str(loader),
+        "representation": str(context["representation"]["_id"]),
+    }
+    if containers is None:
+        containers = get_containers()
+
+    containers.append(data)
+
+    write_workfile_metadata(ZBRUSH_SECTION_NAME_CONTAINERS, containers)
+
+    return data
+
+
+def write_workfile_metadata(metadata_key, value):
+    data_dict = {metadata_key: value}
+    context_data_zscript = ("""
 [IFreeze,
 [MemCreate, ayonData, 4000, 0]
 [MemWriteString, ayonData, {data}, 0]
 ]
 """).format(data=data_dict)
-        execute_zscript(context_data_zscript)
+    execute_zscript(context_data_zscript)
 
-    def get_context_data(self):
-        data_dict = {AYON_METADATA_CONTEXT_KEY: {}}
-        output_file = tempfile.NamedTemporaryFile(
-            mode="w", prefix="a_zb_", suffix=".txt", delete=False
-        )
-        output_file.close()
-        output_filepath = output_file.name.replace("\\", "/")
-        context_data_zscript = ("""
+
+def get_current_workfile_context():
+    return get_workfile_metadata(ZBRUSH_SECTION_NAME_CONTEXT, {})
+
+
+def save_current_workfile_context(context):
+    return write_workfile_metadata(ZBRUSH_SECTION_NAME_CONTEXT, context)
+
+
+def get_workfile_metadata(metadata_key, default=None):
+    if default is None:
+        default = "[]"
+    data_dict = {metadata_key: default}
+    output_file = tempfile.NamedTemporaryFile(
+        mode="w", prefix="a_zb_", suffix=".txt", delete=False
+    )
+    output_file.close()
+    output_filepath = output_file.name.replace("\\", "/")
+    context_data_zscript = ("""
 [IFreeze,
 [If, [MemCreate, ayonData, 4000, 0] !=-1,
 [MemCreate, ayonData, 4000, 0]
@@ -200,24 +247,20 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 [MemDelete, ayonData]
 ]
 """).format(data=data_dict, output_filepath=output_filepath)
-        execute_zscript(context_data_zscript)
-        with open(output_filepath) as data:
-            try:
-                content = json.load(data)
-                return content.get(AYON_METADATA_CONTEXT_KEY) or {}
-            except json.decoder.JSONDecodeError:
-                print(output_filepath)
+    execute_zscript(context_data_zscript)
+    with open(output_filepath) as data:
+        file_content = str(data.read().strip()).rstrip('\x00')
+        file_content = ast.literal_eval(file_content)
+    return file_content
 
 
-def containerise(name: str, nodes: list, context,
-                 namespace=None, loader=None, suffix="_CON"):
-    data = {
-        "schema": "openpype:container-2.0",
-        "id": AVALON_CONTAINER_ID,
-        "name": name,
-        "namespace": namespace or "",
-        "loader": loader,
-        "representation": context["representation"]["_id"],
-    }
-
-    return data
+def get_containers():
+    output = get_workfile_metadata(ZBRUSH_SECTION_NAME_CONTAINERS)
+    if output:
+        for item in output:
+            if "objectName" not in item and "members" in item:
+                members = item["members"]
+                if isinstance(members, list):
+                    members = "|".join([str(member) for member in members])
+                item["objectName"] = members
+    return output

@@ -61,7 +61,7 @@ class CreateZMenuScript(PreLaunchHook):
 [IButton,"Zplugin:AYON:Workfile","Workfile",
 	[VarSet,sc, "{client_script}"]
 	[VarSet, workfiles, "workfiles_tool"]
-	    [VarSet, q, [StrFromAsc, 34]]
+	[VarSet, q, [StrFromAsc, 34]]
 	[VarSet, cmd, [StrMerge, start, " ",#q, #q, "  ",#q, "{py}",#q, " ",#q, sc, #q]]
 	[VarSet, cmd, [StrMerge, cmd, " ", #workfiles, #q]]
 	[ShellExecute, cmd], 0, 120
