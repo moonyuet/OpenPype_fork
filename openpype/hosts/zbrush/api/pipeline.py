@@ -13,12 +13,8 @@ from openpype.pipeline import (
     register_loader_plugin_path,
     AVALON_CONTAINER_ID,
 )
-from openpype.pipeline.context_tools import (
-    get_global_context,
-    get_current_task_name,
-    get_current_asset_name,
-    get_current_project_name
-)
+from openpype.pipeline.context_tools import get_global_context
+
 from openpype.settings import get_current_project_settings
 from openpype.lib import register_event_callback
 from openpype.hosts.zbrush import ZBRUSH_HOST_DIR
@@ -148,7 +144,6 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 [MemSaveToFile, currentfile, "{output_filepath}", 1]
 ]
         """).format(output_filepath=output_filepath)
-        print(f"current_filepath: {output_filepath}")
         execute_zscript(find_current_filepath_zscript)
         if not os.path.exists(output_filepath):
             return None
@@ -242,7 +237,7 @@ def save_current_workfile_context(context):
 
 def get_workfile_metadata(metadata_key, default=None):
     if default is None:
-        default = "[]"
+        default = []
     output_file = tempfile.NamedTemporaryFile(
         mode="w", prefix="a_zb_meta", suffix=".txt", delete=False
     )
