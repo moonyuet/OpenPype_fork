@@ -5,7 +5,7 @@ from openpype.hosts.zbrush.api.lib import execute_zscript
 
 
 class MeshLoader(load.LoaderPlugin):
-    """Fbx Model Loader."""
+    """Zbrush Model Loader."""
 
     families = ["model"]
     representations = ["abc", "fbx", "obj", "ma"]
@@ -27,6 +27,16 @@ class MeshLoader(load.LoaderPlugin):
 
         return containerise(
             name,
-            namespace,
             context,
             loader=self.__class__.__name__)
+
+    def update(self, container, representation):
+        name = container["objectName"]
+        return containerise(
+            name,
+            str(representation["_id"]),
+            loader=self.__class__.__name__)
+
+
+    def switch(self, container, representation):
+        self.update(container, representation)

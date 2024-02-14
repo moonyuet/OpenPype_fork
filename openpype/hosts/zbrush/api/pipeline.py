@@ -25,6 +25,10 @@ ZBRUSH_SECTION_NAME_CONTEXT = "context"
 ZBRUSH_METADATA_CREATE_CONTEXT = "create_context"
 ZBRUSH_SECTION_NAME_INSTANCES = "instances"
 ZBRUSH_SECTION_NAME_CONTAINERS = "containers"
+ZBRUSH_CONTAINERS_SCHEMA = "representation"
+ZBRUSH_CONTAINERS_KEYS = ["schema", "id", "name",
+                          "namespace", "loader", "representation"]
+
 
 PLUGINS_DIR = os.path.join(ZBRUSH_HOST_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
@@ -193,12 +197,12 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         get_workfile_metadata(ZBRUSH_METADATA_CREATE_CONTEXT, {})
 
 def containerise(
-        name, namespace, context, loader=None, containers=None):
+        name, context, loader=None, containers=None):
     data = {
         "schema": "openpype:container-2.0",
         "id": AVALON_CONTAINER_ID,
         "name": name,
-        "namespace": namespace or "",
+        "namespace": "",
         "loader": str(loader),
         "representation": str(context["representation"]["_id"]),
     }
@@ -263,24 +267,33 @@ def get_containers():
     output = get_load_workfile_metadata(ZBRUSH_SECTION_NAME_CONTAINERS)
     if output:
         for item in output:
-            if "objectName" not in item and "members" in item:
-                members = item["members"]
+            if "objectName" not in item and "name" in item:
+                members = item["name"]
                 if isinstance(members, list):
                     members = "|".join([str(member) for member in members])
                 item["objectName"] = members
+
     return output
 
 def write_load_metadata(metadata_key, data):
     #TODO: create temp json file
     string_list = []
     if data:
-        for key, value in data.items():
-            string_dict = {key : value}
-            string = ("""
+        for container_data in data:
+            for key, value in container_data.items():
+                output_file = tempfile.NamedTemporaryFile(
+                    mode="w", prefix=f"a_zb_{key}", suffix=".txt", delete=False
+                )
+                output_file.close()
+                output_filepath = output_file.name.replace("\\", "/")
+                string_dict = {key : value}
+                string = ("""
 [MemCreate, {metadata_key}_{key}, 40000, 0]
 [MemWriteString, {metadata_key}_{key}, "{string_dict}", 0]
-    """).format(metadata_key=metadata_key, key=key, string_dict=string_dict)
-            string_list.append(string)
+[MemSaveToFile, {metadata_key}_{key}, "{output_filepath}", 1]
+    """).format(metadata_key=metadata_key, key=key, string_dict=string_dict,
+                output_filepath=output_filepath)
+                string_list.append(string)
         context_data_zscript = ("""
 [IFreeze,
 [MemCreate, {metadata_key}, 400000, 0]
@@ -306,55 +319,60 @@ def get_load_workfile_metadata(metadata_key, default=None):
         )
         output_file.close()
         output_filepath = output_file.name.replace("\\", "/")
+        string_list, file_list = containers_string_dict(metadata_key)
         context_data_zscript = ("""
 [IFreeze,
-[If, [MemCreate, {metadata_key}, 400000, 0] !=-1,
-[MemCreate, {metadata_key}, 400000, 0]
+[If, [MemCreate, {metadata_key}_{key}, 400000, 0] ==-1,
+{mem_scripts}]
+[If, [MemCreate, containers, 400000, 0] !=-1,
+[MemCreate, containers, 400000, 0]]
 [MemWriteString, {metadata_key}, "{default}", 0]]
 [MemSaveToFile, {metadata_key}, "{output_filepath}", 1]
 [MemDelete, {metadata_key}]
 ]
-    """).format(metadata_key=metadata_key,
+    """).format(metadata_key=metadata_key, key=ZBRUSH_CONTAINERS_SCHEMA,
+                mem_scripts=listToString(string_list),
                 default=default, output_filepath=output_filepath)
         execute_zscript(context_data_zscript)
+        container_data = {}
+        file_content = []
         with open(output_filepath) as data:
             file_content = str(data.read().strip()).rstrip('\x00')
-            file_content = ast.literal_eval(file_content)
+            try:
+                file_content = ast.literal_eval(file_content)
+            except SyntaxError:
+                file_content = []
+
+        for filepath in file_list:
+            with open(filepath) as data:
+                content = str(data.read().strip()).rstrip('\x00')
+                if not content:
+                    return file_content
+                content = ast.literal_eval(content)
+                container_data.update(content)
+                file_content.append(content)
+
         return file_content
 
 
-def load_metadata_with_list(metadata_key, container_data):
-    zstring_list = []
-    data = {}
+def containers_string_dict(metadata_key):
+    string_list = []
     output_filepath_list = []
-    for data in container_data:
-        for key in data.keys():
-            output_file = tempfile.NamedTemporaryFile(
-                mode="w", prefix=f"a_zb_{key}", suffix=".txt", delete=False
-            )
-            output_file.close()
-            output_filepath = output_file.name.replace("\\", "/")
-            mem_string = ("""
+    for key in ZBRUSH_CONTAINERS_KEYS:
+        output_file = tempfile.NamedTemporaryFile(
+            mode="w", prefix=f"a_zb_{key}", suffix=".txt", delete=False
+        )
+        output_file.close()
+        output_filepath = output_file.name.replace("\\", "/")
+        string = ("""
 [MemSaveToFile, {metadata_key}_{key}, "{output_filepath}", 1]
 [MemDelete, {metadata_key}_{key}]
-""").format(metadata_key=metadata_key, key=key, output_filepath=output_filepath)
-            zstring_list.append(mem_string)
-            output_filepath_list.append(output_filepath)
-        context_data_zscript = ("""
-[IFreeze,
-{memstring}
-]
-""").format(memstring=listToString(zstring_list))
-        execute_zscript(context_data_zscript)
-        for filepath in output_filepath_list:
-            with open(filepath) as data:
-                file_content = str(data.read().strip()).rstrip('\x00')
-                file_content = ast.literal_eval(file_content)
-            data.update(file_content)
-        return data
+    """).format(metadata_key=metadata_key, key=key, output_filepath=output_filepath)
+        string_list.append(string)
+        output_filepath_list.append(output_filepath)
+    return string_list, output_filepath_list
 
 
-@staticmethod
 def listToString(string_list):
     string = ""
 

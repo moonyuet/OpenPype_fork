@@ -87,6 +87,7 @@ class ModelAbcLoader(load.LoaderPlugin):
                     rt.Select(abc_con.Children)
                     for abc_obj in abc_con.Children:
                         abc_obj.source = path
+        self.log.debug(container)
         lib.imprint(
             container["instance_node"],
             {"representation": str(representation["_id"])},
