@@ -350,7 +350,7 @@ def get_load_workfile_metadata(metadata_key, default=None):
                     return file_content
                 content = ast.literal_eval(content)
                 container_data.update(content)
-                file_content.append(content)
+        file_content.append(container_data)
 
         return file_content
 
