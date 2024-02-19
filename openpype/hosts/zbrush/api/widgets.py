@@ -1,6 +1,5 @@
 
-"""Simple Client Server Creation to grab the widget info from
-WebSocketServer for executing the shell scripts via Zscript"""
+"""Executing the shell scripts via Zscript"""
 import os
 from aiohttp_json_rpc import JsonRpcClient
 import asyncio

@@ -1,6 +1,6 @@
 import os
 from openpype.pipeline import load
-from openpype.hosts.zbrush.api.pipeline import containerise
+from openpype.hosts.zbrush.api.pipeline import containerise, remove_container_data
 from openpype.hosts.zbrush.api.lib import execute_zscript
 
 
@@ -30,13 +30,5 @@ class MeshLoader(load.LoaderPlugin):
             context,
             loader=self.__class__.__name__)
 
-    def update(self, container, representation):
-        name = container["objectName"]
-        return containerise(
-            name,
-            str(representation["_id"]),
-            loader=self.__class__.__name__)
-
-
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def remove(self, container):
+        return remove_container_data(container["objectName"])

@@ -682,6 +682,8 @@ class BaseCommunicator:
             tmp.write(zscript)
         subprocess.call([zbrush_exe, output_filepath],
                         shell=True)
+        # remove the temp file
+        os.remove(output_filepath)
 
 class QtCommunicator(BaseCommunicator):
 
@@ -731,4 +733,9 @@ class QtCommunicator(BaseCommunicator):
     def _exit(self, *args, **kwargs):
         super()._exit(*args, **kwargs)
         emit_event("application.exit")
+        # remove zscript menu
+        menu_txt_dir = os.path.join(
+            ZBRUSH_HOST_DIR, "api", "zscripts")
+        for filepath in os.listdir(menu_txt_dir):
+            os.remove(os.path.join(menu_txt_dir, filepath))
         self.qt_app.exit(self.exit_code)

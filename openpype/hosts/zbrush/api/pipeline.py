@@ -1,34 +1,30 @@
 """Pipeline tools for OpenPype Zbrush integration."""
 import os
 import ast
+import json
 import logging
 import requests
 import tempfile
 import pyblish.api
-
 from openpype.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
 from openpype.pipeline import (
     legacy_io,
     register_creator_plugin_path,
     register_loader_plugin_path,
-    AVALON_CONTAINER_ID,
+    AVALON_CONTAINER_ID
 )
 from openpype.pipeline.context_tools import get_global_context
 
 from openpype.settings import get_current_project_settings
 from openpype.lib import register_event_callback
 from openpype.hosts.zbrush import ZBRUSH_HOST_DIR
-from .lib import execute_zscript
+from .lib import execute_zscript, get_workdir, get_current_file
 
 METADATA_SECTION = "avalon"
 ZBRUSH_SECTION_NAME_CONTEXT = "context"
 ZBRUSH_METADATA_CREATE_CONTEXT = "create_context"
 ZBRUSH_SECTION_NAME_INSTANCES = "instances"
 ZBRUSH_SECTION_NAME_CONTAINERS = "containers"
-ZBRUSH_CONTAINERS_SCHEMA = "representation"
-ZBRUSH_CONTAINERS_KEYS = ["schema", "id", "name",
-                          "namespace", "loader", "representation"]
-
 
 PLUGINS_DIR = os.path.join(ZBRUSH_HOST_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
@@ -129,7 +125,8 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 """).format(filepath=filepath)
         context = get_global_context()
         save_current_workfile_context(context)
-
+        # move the json data to the files
+        # shutil.copy
         execute_zscript(save_file_zscript)
         return filepath
 
@@ -157,7 +154,7 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     def workfile_has_unsaved_changes(self):
         # Pop-up dialog would be located to ask if users
         # save scene if it has unsaved changes
-        return None
+        return False
 
     def get_workfile_extensions(self):
         return [".zpr"]
@@ -178,7 +175,7 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         Todo:
             This should be handled out of Zbrush integration logic.
         """
-
+        remove_tmp_data(ZBRUSH_SECTION_NAME_CONTAINERS)
         data = get_current_project_settings()
         stop_timer = data["tvpaint"]["stop_timer_on_application_exit"]
 
@@ -226,12 +223,16 @@ def write_workfile_metadata(metadata_key, value):
 
 
 def get_current_workfile_context():
-    current_context = {
+    current_context = get_current_context()
+    return get_workfile_metadata(ZBRUSH_SECTION_NAME_CONTEXT, current_context)
+
+
+def get_current_context():
+    return {
         "project_name": os.environ.get("AVALON_PROJECT"),
         "asset_name": os.environ.get("AVALON_ASSET"),
         "task_name": os.environ.get("AVALON_TASK"),
     }
-    return get_workfile_metadata(ZBRUSH_SECTION_NAME_CONTEXT, current_context)
 
 
 def save_current_workfile_context(context):
@@ -277,108 +278,78 @@ def get_containers():
 
 def write_load_metadata(metadata_key, data):
     #TODO: create temp json file
-    string_list = []
-    if data:
-        for container_data in data:
-            for key, value in container_data.items():
-                output_file = tempfile.NamedTemporaryFile(
-                    mode="w", prefix=f"a_zb_{key}", suffix=".txt", delete=False
-                )
-                output_file.close()
-                output_filepath = output_file.name.replace("\\", "/")
-                string_dict = {key : value}
-                string = ("""
-[MemCreate, {metadata_key}_{key}, 40000, 0]
-[MemWriteString, {metadata_key}_{key}, "{string_dict}", 0]
-[MemSaveToFile, {metadata_key}_{key}, "{output_filepath}", 1]
-    """).format(metadata_key=metadata_key, key=key, string_dict=string_dict,
-                output_filepath=output_filepath)
-                string_list.append(string)
-        context_data_zscript = ("""
-[IFreeze,
-[MemCreate, {metadata_key}, 400000, 0]
-{memstring}
-]
-""").format(metadata_key=metadata_key, memstring=listToString(string_list))
-        execute_zscript(context_data_zscript)
-    else:
-        context_data_zscript = ("""
-[IFreeze,
-[MemCreate, {metadata_key}, 400000, 0]
-{memstring}
-]
-""").format(metadata_key=metadata_key, memstring=listToString(string_list))
-        execute_zscript(context_data_zscript)
-
-
-def get_load_workfile_metadata(metadata_key, default=None):
-    if default is None:
-        default = []
-        output_file = tempfile.NamedTemporaryFile(
-            mode="w", prefix="a_zb_meta", suffix=".txt", delete=False
+    project_name = get_current_context()["project_name"]
+    asset_name = get_current_context()["asset_name"]
+    task_name = get_current_context()["task_name"]
+    current_file = get_current_file()
+    work_dir = get_workdir(project_name, asset_name, task_name)
+    name = next((d["name"] for d in data), None)
+    json_dir = os.path.join(
+        work_dir, ".zbrush_metadata",
+        current_file, metadata_key).replace(
+            "\\", "/"
         )
-        output_file.close()
-        output_filepath = output_file.name.replace("\\", "/")
-        string_list, file_list = containers_string_dict(metadata_key)
-        context_data_zscript = ("""
-[IFreeze,
-[If, [MemCreate, {metadata_key}_{key}, 400000, 0] ==-1,
-{mem_scripts}]
-[If, [MemCreate, containers, 400000, 0] !=-1,
-[MemCreate, containers, 400000, 0]]
-[MemWriteString, {metadata_key}, "{default}", 0]]
-[MemSaveToFile, {metadata_key}, "{output_filepath}", 1]
-[MemDelete, {metadata_key}]
-]
-    """).format(metadata_key=metadata_key, key=ZBRUSH_CONTAINERS_SCHEMA,
-                mem_scripts=listToString(string_list),
-                default=default, output_filepath=output_filepath)
-        execute_zscript(context_data_zscript)
-        container_data = {}
-        file_content = []
-        with open(output_filepath) as data:
-            file_content = str(data.read().strip()).rstrip('\x00')
-            try:
-                file_content = ast.literal_eval(file_content)
-            except SyntaxError:
-                file_content = []
+    os.makedirs(json_dir, exist_ok=True)
+    with open (f"{json_dir}/{name}.json", "w") as file:
+        value = json.dumps(data)
+        file.write(value)
+        file.close()
 
-        for filepath in file_list:
-            with open(filepath) as data:
-                content = str(data.read().strip()).rstrip('\x00')
-                if not content:
-                    return file_content
-                content = ast.literal_eval(content)
-                container_data.update(content)
-        file_content.append(container_data)
 
+def get_load_workfile_metadata(metadata_key):
+    # save zscript to the hidden folder
+    # load json files
+    file_content = []
+    project_name = get_current_context()["project_name"]
+    asset_name = get_current_context()["asset_name"]
+    task_name = get_current_context()["task_name"]
+    current_file = get_current_file()
+    work_dir = get_workdir(project_name, asset_name, task_name)
+    json_dir = os.path.join(
+        work_dir, ".zbrush_metadata",
+        current_file, metadata_key).replace(
+            "\\", "/"
+        )
+    if not os.path.exists(json_dir):
         return file_content
+    file_list = os.listdir(json_dir)
+    if not file_list:
+        return file_content
+    for file in file_list:
+        with open (f"{json_dir}/{file}", "r") as data:
+            content = ast.literal_eval(str(data.read().strip()))
+            file_content.extend(content)
+            data.close()
+    return file_content
 
 
-def containers_string_dict(metadata_key):
-    string_list = []
-    output_filepath_list = []
-    for key in ZBRUSH_CONTAINERS_KEYS:
-        output_file = tempfile.NamedTemporaryFile(
-            mode="w", prefix=f"a_zb_{key}", suffix=".txt", delete=False
+def remove_container_data(name):
+    project_name = get_current_context()["project_name"]
+    asset_name = get_current_context()["asset_name"]
+    task_name = get_current_context()["task_name"]
+    current_file = get_current_file()
+    work_dir = get_workdir(project_name, asset_name, task_name)
+    json_dir = os.path.join(
+        work_dir, ".zbrush_metadata",
+        current_file, ZBRUSH_SECTION_NAME_CONTAINERS).replace(
+            "\\", "/"
         )
-        output_file.close()
-        output_filepath = output_file.name.replace("\\", "/")
-        string = ("""
-[MemSaveToFile, {metadata_key}_{key}, "{output_filepath}", 1]
-[MemDelete, {metadata_key}_{key}]
-    """).format(metadata_key=metadata_key, key=key, output_filepath=output_filepath)
-        string_list.append(string)
-        output_filepath_list.append(output_filepath)
-    return string_list, output_filepath_list
+    all_fname_list = os.listdir(json_dir)
+    json_file = next((jfile for jfile in all_fname_list
+                               if jfile == f"{name}.json"), None)
+    if json_file:
+        os.remove(f"{json_dir}/{json_file}")
 
 
-def listToString(string_list):
-    string = ""
-
-    # traverse in the string
-    for ele in string_list:
-        string += f"{ele}\n"
-
-    # return string
-    return string
+def remove_tmp_data(name):
+    project_name = get_current_context()["project_name"]
+    asset_name = get_current_context()["asset_name"]
+    task_name = get_current_context()["task_name"]
+    work_dir = get_workdir(project_name, asset_name, task_name)
+    json_dir = os.path.join(
+        work_dir, ".zbrush_metadata", name).replace(
+            "\\", "/"
+        )
+    all_fname_list = os.listdir(json_dir)
+    for fname_list in all_fname_list:
+        os.remove(f"{json_dir}/{fname_list}.json")
