@@ -1,6 +1,8 @@
 import os
-from openpype.pipeline import load
-from openpype.hosts.zbrush.api.pipeline import containerise, remove_container_data
+from openpype.pipeline import load, get_representation_path
+from openpype.hosts.zbrush.api.pipeline import (
+    containerise, remove_container_data, imprint
+)
 from openpype.hosts.zbrush.api.lib import execute_zscript
 
 
@@ -29,6 +31,23 @@ class MeshLoader(load.LoaderPlugin):
             name,
             context,
             loader=self.__class__.__name__)
+
+    def update(self, container, representation):
+        path = get_representation_path(representation)
+        load_zscript = ("""
+[IFreeze,
+[VarSet, filename, "{filepath}"]
+[FileNameSetNext, #filename]
+[IKeyPress, 13, [IPress, Tool:Import:Import]]
+]
+
+""").format(filepath=path)
+        execute_zscript(load_zscript)
+        representation_id = str(representation["_id"])
+        imprint(container, representation_id)
+
+    def switch(self, container, representation):
+        self.update(container, representation)
 
     def remove(self, container):
         return remove_container_data(container["objectName"])

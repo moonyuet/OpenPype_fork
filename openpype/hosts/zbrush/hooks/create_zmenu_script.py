@@ -20,6 +20,7 @@ class CreateZMenuScript(PreLaunchHook):
 
     def execute(self):
         zscript_path = os.path.join(ZBRUSH_HOST_DIR, "api", "zscripts")
+        os.makedirs(zscript_path, exist_ok=True)
         zscript_txt = os.path.join(zscript_path, "ayon_zbrush_menu.txt")
         with open(zscript_txt, "w") as zscript:
             zscript.write(self.ayon_menu())

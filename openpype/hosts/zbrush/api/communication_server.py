@@ -569,11 +569,18 @@ class BaseCommunicator:
 
     def _exit(self, exit_code=None):
         self._stop_webserver()
+        self._remove_zscript_menu()
         if exit_code is not None:
             self.exit_code = exit_code
 
         if self.exit_code is None:
             self.exit_code = 0
+
+    def _remove_zscript_menu(self):
+        menu_txt_dir = os.path.join(
+            ZBRUSH_HOST_DIR, "api", "zscripts")
+        for filepath in os.listdir(menu_txt_dir):
+            os.remove(os.path.join(menu_txt_dir, filepath))
 
     def stop(self):
         """Stop communication and currently running python process."""
@@ -734,8 +741,4 @@ class QtCommunicator(BaseCommunicator):
         super()._exit(*args, **kwargs)
         emit_event("application.exit")
         # remove zscript menu
-        menu_txt_dir = os.path.join(
-            ZBRUSH_HOST_DIR, "api", "zscripts")
-        for filepath in os.listdir(menu_txt_dir):
-            os.remove(os.path.join(menu_txt_dir, filepath))
         self.qt_app.exit(self.exit_code)

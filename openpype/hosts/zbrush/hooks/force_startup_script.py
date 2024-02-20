@@ -33,16 +33,17 @@ class ForceStartupScript(PreLaunchHook):
         # Append as whole list as these areguments should not be separated
         self.launch_context.launch_args.append(new_launch_args)
 
+        startup_args = [
+            os.path.join(ZBRUSH_HOST_DIR, "startup", "startup.txt"),
+        ]
+        self.launch_context.launch_args.append(startup_args)
+
         if remainders:
             self.log.warning((
                 "There are unexpected launch arguments in Zbrush launch. {}"
             ).format(str(remainders)))
             self.launch_context.launch_args.extend(remainders)
 
-        startup_args = [
-            os.path.join(ZBRUSH_HOST_DIR, "startup", "startup.txt"),
-        ]
-        self.launch_context.launch_args.append(startup_args)
 
     def launch_script_path(self):
         from openpype.hosts.zbrush import get_launch_script_path
